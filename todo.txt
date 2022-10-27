@@ -1,0 +1,22 @@
+TO DO list for game
+
+give all dirt pngs a rect for bot movement mapping | Check
+make it so the walls that are touching dirt have a shadow | later
+give walls collision | Check
+scale everything up | Check
+scrolling | Check
+
+BOT STUFF
+
+make a bot that can move within the maze
+make a bot be able to track the player
+make the bot be able to do it efficiantly
+make the bot have different states
+stalking state
+chasing
+wandering
+can see light
+make bot sprite
+
+I was gonna have rays being casted from the bot but i think a navigation grid would be more effeciant
+
