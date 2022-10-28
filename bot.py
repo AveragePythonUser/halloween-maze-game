@@ -2,7 +2,8 @@ import pygame, random
 
 # -=================================-
 #
-#    (most) everything to do with the bot
+#    (most) everything to do with the bot 
+#    currently unused
 # 
 # -=================================-
 

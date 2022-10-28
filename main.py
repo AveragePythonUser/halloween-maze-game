@@ -1,4 +1,4 @@
-import pygame, sys, os, time
+import pygame, sys, os, time, random
 from pygame.locals import QUIT
 import ghost
 from ghost import ghost_rect as ghost_rect
@@ -18,12 +18,6 @@ PLAYER = pygame.image.load(os.path.join(assets, "player.png"))
 RUBY = pygame.image.load(os.path.join(assets, "ruby_spook.png"))
 BOT_IMG = False 
 
-
-shadow_surf = pygame.Surface((WIDTH / 2, HEIGHT / 2))
-
-shadow_surf.set_alpha(35)
-
-
 CLOCK = pygame.time.Clock()
 FPS = 60
 
@@ -32,11 +26,16 @@ wall_rects = []
 nodes = []
 lines = []
 win_rects = []
+start_points = [[1184, 94], [1154, 475], [32, 64]]
+
+font = pygame.font.Font('freesansbold.ttf', 32)
 
 true_scroll = [0, 0]
 scroll = [0,0]
 
-player_pos = [32, 64] # stores the position of the player in a rect to be refenced later
+world_0 = pygame.Rect(0, 0, 32, 32)
+
+player_pos = random.choice(start_points) # stores the position of the player in a rect to be refenced later
 player_rect = pygame.Rect(player_pos[0], player_pos[1], 32, 32)
 
 render_rect = pygame.Rect(0,0, WIDTH / 2, HEIGHT /2)
@@ -54,9 +53,9 @@ def load_map(path):
     return game_map
 
 game_map = load_map("maze") # loads game_map as a list into ram
-background = load_map("background") # unused 
 
 def initialize_map():
+    global world_0
     
     y = 0
     for row in game_map:
@@ -64,7 +63,7 @@ def initialize_map():
         for tile in row:
             if(tile == "1"):
                 DISPLAY.blit(WALL, tile_pos(x, y, "n"))
-                wall_rect = pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32)
+                wall_rect = pygame.Rect(x * 32 - scroll[0], x * 32 - scroll[1], 32, 32)
                 wall_rects.append(wall_rect)
                 
             if(tile == "0"):
@@ -75,6 +74,15 @@ def initialize_map():
                 node = pygame.Rect(x * 32 + 28 - scroll[0], y * 32 - scroll[1], 4, 4)
                 nodes.append(node)
                 DISPLAY.blit(DIRT, tile_pos(x, y , "n"))
+            if(tile == "o"):
+                world_0 = pygame.Rect(x * 32 - scroll[0], x * 32 - scroll[1], 32, 32)
+            if tile == "I":
+                start_points.append(pygame.Rect(x * 32 - scroll[0], x * 32 - scroll[1], 32, 32))
+                DISPLAY.blit(DIRT, tile_pos(x, y, "n"))
+            if tile == "P":
+                ghost_start = pygame.Rect(x * 32 - scroll[0], x * 32 - scroll[1], 32, 32)
+                ghost.ghost_pos[0] = ghost_start.x
+                ghost.ghost_pos[1] = ghost_start.y
                              
             x += 1
         y += 1
@@ -112,6 +120,14 @@ def k_player_down(speed):
 def k_player_right(speed):
     player_pos[0] += speed
 
+def game_over(text):
+  text_rect = pygame.Rect(WIDTH / 2 - 64, HEIGHT / 2 - 64, 10, 10) 
+  text_surface = font.render(text, True, (0,0,0))
+  while True: 
+    WIN.blit(text_surface, (text_rect))
+    pygame.display.update()
+
+
 
 def movement(key_pressed, l_speed):
     if(key_pressed [pygame.K_UP]) or (key_pressed [pygame.K_w]): # UP
@@ -126,6 +142,7 @@ def movement(key_pressed, l_speed):
     player_rect.x, player_rect.y = player_pos[0] - scroll[0], player_pos[1] - scroll[1]
 
 def render(dirt_rects, wall_rects):
+    global world_0
       
     # RENDERS GAME MAP
     
@@ -134,22 +151,23 @@ def render(dirt_rects, wall_rects):
         x = 0
         for tile in row:
             if(tile == "1"):
-                wall_rect = pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32)
-                wall_rects.append(wall_rect)
-                if wall_rect.colliderect(render_rect):
+                # wall_rect = pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32) # i dont know if assigning a variable to the rect function takes up more ram or not
+                if pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32).colliderect(render_rect):
                     DISPLAY.blit(WALL, tile_pos(x, y, "n"))
+                    wall_rects.append(pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32))
                   
             if(tile == "0"):
-                dirt_rect = pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32)
-                dirt_rects.append(dirt_rect)
-                if dirt_rect.colliderect(render_rect):
+                if pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32).colliderect(render_rect):
                     DISPLAY.blit(DIRT, tile_pos(x, y, "n"))
+                    dirt_rects.append(pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32))
             if(tile == "W"):
                 ruby_rect = pygame.Rect(x * 32 - scroll[0], y * 32 - scroll[1], 32, 32 )
-                win_rects.append(ruby_rect)
                 if ruby_rect.colliderect(render_rect):
                     DISPLAY.blit(DIRT, tile_pos(x, y, "n"))
                     DISPLAY.blit(RUBY, (tile_pos(x, y, "n")))
+                    win_rects.append(ruby_rect)
+            if(tile == "o"):
+                world_0 = pygame.Rect(x * 32 - scroll[0], x * 32 - scroll[1], 32, 32)
                              
             x += 1
         y += 1
@@ -167,6 +185,11 @@ def player_collision(rect):
 
 def collision(key_pressed, speed):
 
+    if player_rect.colliderect(ghost_rect):
+        game_over("GAME OVER")
+    for rect in win_rects:
+        if player_rect.colliderect(rect):
+            game_over("YOU WIN")
     for rect in wall_rects:
         rect.x - scroll[0]
         rect.y - scroll[1]
@@ -174,6 +197,7 @@ def collision(key_pressed, speed):
             player_collision(rect)
 
 initialize_map()
+print(start_points)
 
 while True:
     CLOCK.tick(FPS)
@@ -181,8 +205,6 @@ while True:
         if event.type == QUIT:
             pygame.quit()
             sys.exit()
-
-      
 
     key_pressed = pygame.key.get_pressed()
 
@@ -197,23 +219,13 @@ while True:
 
     dirt_rects = []
     wall_rects = []
-    nodes = [] # MAKE SURE TO RESET YOUR LIST OF RECTS 
+    #nodes = [] # MAKE SURE TO RESET YOUR LIST OF RECTS 
     win_rects = []
     
     movement(key_pressed, speed)  
     render(dirt_rects, wall_rects)
     collision(key_pressed, speed)  
     ghost.move(DISPLAY, player_rect, scroll)
-    #pygame.draw.rect(DISPLAY, (255,0,0), render_rect)
-
-    for line in lines:
-        pygame.draw.rect(DISPLAY, (255,255,0), line)
-        line.x -= scroll[0]
-        line.y -= scroll[1]
-
-
-    #pygame.draw.rect(DISPLAY, (0,0,255), player_rect)
-    #DISPLAY.blit(SHADOW, (player_rect.x - 128 + 16,player_rect.y - 128 + 16)) put in later (also make better shadow)
 
     DISPLAY.blit(PLAYER, (player_rect.x, player_rect.y))
     surf = pygame.transform.scale(DISPLAY, (HEIGHT, WIDTH))
